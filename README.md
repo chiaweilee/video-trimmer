@@ -31,6 +31,7 @@ This command analyzes `input.mp4`, detects all segments with people, merges near
 | `--input`         | Yes      | Path to the input video file (e.g., `video.mp4`).                                                                                        |
 | `--detectHuman`   | No\*     | Enable human detection. If omitted, the tool returns an empty segment list and does nothing. (Required if you want analysis or trimming) |
 | `--output`        | No       | Path to save the trimmed video (e.g., `trimmed.mp4`). If not provided, only JSON results are printed to stdout.                          |
+| `--export-xml`    | No       | Path to save the FCP7 XML.                                                                                                       |
 | `--confThreshold` | No       | Confidence threshold for person detection (0.0–1.0). Lower = more sensitive. Default: `0.5`.                                             |
 | `--padding`       | No       | Seconds of padding added before/after each detected segment. Default: `0.5`.                                                             |
 | `--gapTolerance`  | No       | Maximum gap (in seconds) between detections to merge into one segment. Default: `1.0`.                                                   |
@@ -91,6 +92,20 @@ Treat detections within 2 seconds of each other as one continuous segment:
 
 ```bash
 vtrim --input interview.mp4 --detectHuman --output cut.mp4 --gapTolerance 2.0
+```
+
+#### Export to Premiere Pro / DaVinci Resolve
+
+```bash
+vtrim --input your_video.mp4 --detectHuman --export-xml timeline.xml
+```
+
+You can combine this with --output to also generate a preview video:
+
+```bash
+vtrim --input interview.mp4 --detectHuman \
+      --output preview.mp4 \
+      --export-xml interview_edit.xml
 ```
 
 ### Notes
