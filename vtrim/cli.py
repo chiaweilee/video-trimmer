@@ -78,7 +78,7 @@ def main():
                 segments=segments,
                 output_xml_path=args.export_xml,
                 video_duration=video_duration,
-                fps=24.0
+                fps=fps
             )
 
     # Always output JSON to stdout (for compatibility)
