@@ -85,6 +85,7 @@ def main():
                 input_video_path=args.input,
                 segments=segments,
                 output_xml_path=args.export_xml,
+                video_duration=video_duration,
                 fps=24.0
             )
 
