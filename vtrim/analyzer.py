@@ -2,10 +2,21 @@ import cv2
 import sys
 import os
 import json
-from .model_utils import load_onnx_model, preprocess, postprocess
+from .model import load_yolo_model
 
-def detect_human(video_path, model_path="yolov8s.onnx", conf_threshold=0.5):
-    net = load_onnx_model(model_path)
+def detect_human(video_path, conf_threshold=0.5):
+    """
+    Detect human presence in video using a pre-loaded YOLO model.
+    
+    Args:
+        video_path (str): Path to input video
+        model: Ultralytics YOLO model instance (e.g., YOLO("yolov8n.pt"))
+        conf_threshold (float): Confidence threshold for detection
+    
+    Returns:
+        List[dict]: List of segments with "start" and "end" time (in seconds)
+    """
+    model = load_yolo_model()
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         raise IOError(f"Failed to open video file: {video_path}")
@@ -18,7 +29,7 @@ def detect_human(video_path, model_path="yolov8s.onnx", conf_threshold=0.5):
     if total_frames <= 0:
         total_frames = None
 
-    # 2 FPS
+    # Sample at 2 FPS
     frame_interval = max(1, int(round(fps / 2)))
     segments = []
     frame_idx = 0
@@ -32,13 +43,16 @@ def detect_human(video_path, model_path="yolov8s.onnx", conf_threshold=0.5):
             break
 
         if frame_idx % frame_interval == 0:
-            input_blob = preprocess(frame)
-            net.setInput(input_blob)
-            outputs = net.forward()
-            if postprocess(outputs, conf_threshold=conf_threshold):
+            # ✅ Use Ultralytics YOLO for inference
+            # Set verbose=False to suppress per-frame logs
+            results = model(frame, conf=conf_threshold, classes=[0], verbose=False)
+            
+            # Check if any person (class 0) is detected
+            if len(results[0].boxes) > 0:
                 t = frame_idx / fps
                 segments.append({"start": t, "end": t})
 
+        # Progress reporting (unchanged)
         if total_frames is not None and total_frames > 0:
             current_percent = min(100, int(round((frame_idx / total_frames) * 100)))
             if current_percent > last_reported_percent:

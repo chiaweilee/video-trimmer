@@ -1,6 +1,5 @@
 import argparse
 import sys
-import os
 import json
 import cv2
 
@@ -8,7 +7,6 @@ from .analyzer import detect_human
 from .segment_utils import merge_segments, apply_padding
 from .ffmpeg_utils import cut_video_with_ffmpeg
 from .xml_export import export_fcp7_xml
-from .model_utils import resource_path
 
 def main():
     parser = argparse.ArgumentParser(
@@ -60,12 +58,6 @@ def main():
     segments = []
 
     if args.detect_human:
-        model_path = "yolov8s.onnx"
-        if not os.path.isabs(model_path) and not os.path.exists(model_path):
-            model_path = resource_path(model_path)
-            if not os.path.exists(model_path):
-                raise FileNotFoundError(f"Model file not found at: {model_path}")
-
         conf_threshold = args.conf_threshold
         padding = args.padding
         gap_tolerance = args.gap_tolerance
@@ -76,7 +68,7 @@ def main():
         video_duration = frame_count / fps if fps > 0 else float('inf')
         cap.release()
 
-        raw_segments = detect_human(video_path, model_path=model_path, conf_threshold=conf_threshold)
+        raw_segments = detect_human(video_path, conf_threshold=conf_threshold)
         merged = merge_segments(raw_segments, gap_tolerance=gap_tolerance)
         segments = apply_padding(merged, padding=padding, video_duration=video_duration)
 

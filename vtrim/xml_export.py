@@ -4,7 +4,6 @@ import json
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 
-
 def get_video_total_frames(video_path, fps):
     """Get total frame count via ffprobe; fallback to duration * fps if failed."""
     try:
@@ -17,7 +16,6 @@ def get_video_total_frames(video_path, fps):
     except Exception:
         # Fallback: assume 60 seconds if ffprobe fails
         return int(round(60.0 * fps))
-
 
 def build_full_timeline_segments(segments, video_duration):
     """
@@ -48,7 +46,6 @@ def build_full_timeline_segments(segments, video_duration):
         full.append({"start": current, "end": video_duration, "type": "invalid"})
 
     return full
-
 
 def export_fcp7_xml(input_video_path, segments, output_xml_path, video_duration, fps=24.0):
     """
