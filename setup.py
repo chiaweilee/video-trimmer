@@ -10,6 +10,9 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/ai-libx/vtrim",
     packages=find_packages(),
+    package_data={
+        "vtrim": ["*.onnx"],
+    },
     install_requires=[],
     entry_points={
         "console_scripts": [
