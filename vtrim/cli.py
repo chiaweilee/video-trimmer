@@ -33,19 +33,19 @@ def main():
         "--conf-threshold",
         type=float,
         default=0.25,
-        help="Confidence threshold for person detection (range: 0.0–1.0). Lower values increase sensitivity but may raise false positives. Default: 0.5."
+        help="Confidence threshold for person detection (range: 0.0–1.0). Lower values increase sensitivity but may raise false positives. "
     )
     parser.add_argument(
         "--padding",
         type=float,
-        default=1.5,
-        help="Padding in seconds added to the start and end of each detected segment to ensure context is preserved. Default: 0.5 seconds."
+        default=1,
+        help="Padding in seconds added to the start and end of each detected segment to ensure context is preserved. "
     )
     parser.add_argument(
         "--gap-tolerance",
         type=float,
-        default=2.0,
-        help="Maximum gap (in seconds) between adjacent detections to be merged into a single continuous segment. Default: 1.0 second."
+        default=4.0,
+        help="Maximum gap (in seconds) between adjacent detections to be merged into a single continuous segment. "
     )
     parser.add_argument(
         "--export-xml",
