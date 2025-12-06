@@ -13,30 +13,30 @@ pip install vtrim
 ### Usage
 
 ```bash
-vtrim --input <video_file_path> [--detectHuman] [--output <trimmed_video_path>] [other options]
+vtrim --input <video_file_path> [--detect-human] [--output <trimmed_video_path>] [other options]
 ```
 
 #### Basic Command
 
 ```bash
-vtrim --input input.mp4 --detectHuman --output output.mp4
+vtrim --input input.mp4 --detect-human --output output.mp4
 ```
 
 This command analyzes `input.mp4`, detects all segments with people, merges nearby detections, adds padding, and saves a trimmed version as `output.mp4` using lossless stream copy.
 
 #### Full Option Reference
 
-| Parameter         | Required | Description                                                                                                                              |
-| ----------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `--input`         | Yes      | Path to the input video file (e.g., `video.mp4`).                                                                                        |
-| `--detectHuman`   | No\*     | Enable human detection. If omitted, the tool returns an empty segment list and does nothing. (Required if you want analysis or trimming) |
-| `--output`        | No       | Path to save the trimmed video (e.g., `trimmed.mp4`). If not provided, only JSON results are printed to stdout.                          |
-| `--export-xml`    | No       | Path to save the FCP7 XML.                                                                                                       |
-| `--confThreshold` | No       | Confidence threshold for person detection (0.0–1.0). Lower = more sensitive. Default: `0.5`.                                             |
-| `--padding`       | No       | Seconds of padding added before/after each detected segment. Default: `0.5`.                                                             |
-| `--gapTolerance`  | No       | Maximum gap (in seconds) between detections to merge into one segment. Default: `1.0`.                                                   |
+| Parameter          | Required | Description                                                                                                                              |
+| ------------------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `--input`          | Yes      | Path to the input video file (e.g., `video.mp4`).                                                                                        |
+| `--detect-human`   | No\*     | Enable human detection. If omitted, the tool returns an empty segment list and does nothing. (Required if you want analysis or trimming) |
+| `--output`         | No       | Path to save the trimmed video (e.g., `trimmed.mp4`). If not provided, only JSON results are printed to stdout.                          |
+| `--export-xml`     | No       | Path to save the FCP7 XML.                                                                                                               |
+| `--conf-threshold` | No       | Confidence threshold for person detection (0.0–1.0). Lower = more sensitive. Default: `0.5`.                                             |
+| `--padding`        | No       | Seconds of padding added before/after each detected segment. Default: `0.5`.                                                             |
+| `--gap-tolerance`  | No       | Maximum gap (in seconds) between detections to merge into one segment. Default: `1.0`.                                                   |
 
-> 📌 **Important**: `--detectHuman` must be specified to perform any analysis. Without it, the output will always be `{"segments": []}`.
+> 📌 **Important**: `--detect-human` must be specified to perform any analysis. Without it, the output will always be `{"segments": []}`.
 
 ### Output
 
@@ -75,7 +75,7 @@ This enables reliable integration with scripts or parent processes (e.g., Node.j
 Print human-presence segments without generating a new video:
 
 ```bash
-vtrim --input meeting.mp4 --detectHuman
+vtrim --input meeting.mp4 --detect-human
 ```
 
 #### Adjust Sensitivity and Padding
@@ -83,7 +83,7 @@ vtrim --input meeting.mp4 --detectHuman
 Use a lower confidence threshold and add 1-second padding around each segment:
 
 ```bash
-vtrim --input event.mp4 --detectHuman --output clean.mp4 --confThreshold 0.3 --padding 1.0
+vtrim --input event.mp4 --detect-human --output clean.mp4 --conf-threshold 0.3 --padding 1.0
 ```
 
 #### Merge Close Detections
@@ -91,19 +91,19 @@ vtrim --input event.mp4 --detectHuman --output clean.mp4 --confThreshold 0.3 --p
 Treat detections within 2 seconds of each other as one continuous segment:
 
 ```bash
-vtrim --input interview.mp4 --detectHuman --output cut.mp4 --gapTolerance 2.0
+vtrim --input interview.mp4 --detect-human --output cut.mp4 --gap-tolerance 2.0
 ```
 
 #### Export to Premiere Pro / DaVinci Resolve
 
 ```bash
-vtrim --input your_video.mp4 --detectHuman --export-xml timeline.xml
+vtrim --input your_video.mp4 --detect-human --export-xml timeline.xml
 ```
 
 You can combine this with --output to also generate a preview video:
 
 ```bash
-vtrim --input interview.mp4 --detectHuman \
+vtrim --input interview.mp4 --detect-human \
       --output preview.mp4 \
       --export-xml interview_edit.xml
 ```

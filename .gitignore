@@ -2,3 +2,4 @@ build/
 dist/
 *.egg-info/
 *.mp4
+__pycache__
