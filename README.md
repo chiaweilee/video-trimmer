@@ -1,6 +1,8 @@
 # VTrim
 
-VTrim is a lightweight, efficient video analysis and trimming tool powered by YOLOv8 object detection. It automatically scans your video files for segments containing human presence and can optionally output a trimmed version that includes only those segments—**without re-encoding**, preserving original quality and enabling ultra-fast processing.
+**VTrim** is a lightweight, efficient video analysis and trimming tool. It automatically finds segments containing people and can **output a trimmed video instantly—without re-encoding**, preserving original quality at blazing speed.
+
+• ⚡ Lossless • 🎥 Professional edit-ready XML
 
 ## Installation
 
@@ -10,19 +12,56 @@ Install via pip:
 pip install vtrim
 ```
 
-### Usage
+## Quick Start
+
+### Trim Video Directly
 
 ```bash
-vtrim --input <video_file_path> [--detect-human] [--output <trimmed_video_path>] [other options]
+vtrim --input your_video.mp4 --detect-human --output output.mp4
 ```
 
-#### Basic Command
+- Uses FFmpeg stream copy (-c copy) → no re-encoding, no quality loss.
+- Automatically merges nearby detections and adds padding for smooth transitions.
+
+### Export Edit Timeline to DaVinci Resolve / Premiere Pro
+
+Preserve the full timeline (including gaps) as an **FCP7 XML** for professional editing:
 
 ```bash
-vtrim --input input.mp4 --detect-human --output output.mp4
+vtrim --input your_video.mp4 --detect-human --export-xml timeline.xml
 ```
 
-This command analyzes `input.mp4`, detects all segments with people, merges nearby detections, adds padding, and saves a trimmed version as `output.mp4` using lossless stream copy.
+*Audio and video are perfectly synchronized and split per segment.*
+
+You can **combine both outputs**:
+
+```bash
+vtrim --input your_video.mp4 \
+      --detect-human \
+      --output output.mp4 \
+      --export-xml timeline.xml
+```
+
+### Get Raw Detection Results (JSON)
+
+Print detected time segments to `stdout` for scripting or integration:
+
+```bash
+vtrim --input meeting.mp4 --detect-human
+```
+
+Output:
+
+```json
+{
+  "segments": [
+    { "start": 2.3, "end": 5.8 },
+    { "start": 10.1, "end": 14.7 }
+  ]
+}
+```
+
+Segments are in **seconds**, ready for automation (e.g., with Python, Node.js, or shell scripts).
 
 #### Full Option Reference
 
@@ -37,76 +76,6 @@ This command analyzes `input.mp4`, detects all segments with people, merges near
 | `--gap-tolerance`  | No       | Maximum gap (in seconds) between detections to merge into one segment. Default: `1.0`.                                                   |
 
 > 📌 **Important**: `--detect-human` must be specified to perform any analysis. Without it, the output will always be `{"segments": []}`.
-
-### Output
-
-#### Standard Output (stdout)
-
-Always prints a JSON object with detected time segments:
-
-```json
-{
-  "segments": [
-    { "start": 2.3, "end": 5.8 },
-    { "start": 10.1, "end": 14.7 }
-  ]
-}
-```
-
-Each segment is in seconds.
-
-#### Error Reporting (stderr)
-
-If an error occurs (e.g., missing model, FFmpeg failure), a JSON error object is written to `stderr`:
-
-```json
-{
-  "error": "FFmpeg is not installed or not found in PATH. Please install FFmpeg.",
-  "type": "ffmpeg_error"
-}
-```
-
-This enables reliable integration with scripts or parent processes (e.g., Node.js, shell pipelines).
-
-### Examples
-
-#### Analyze Only (No Video Output)
-
-Print human-presence segments without generating a new video:
-
-```bash
-vtrim --input meeting.mp4 --detect-human
-```
-
-#### Adjust Sensitivity and Padding
-
-Use a lower confidence threshold and add 1-second padding around each segment:
-
-```bash
-vtrim --input event.mp4 --detect-human --output clean.mp4 --conf-threshold 0.3 --padding 1.0
-```
-
-#### Merge Close Detections
-
-Treat detections within 2 seconds of each other as one continuous segment:
-
-```bash
-vtrim --input interview.mp4 --detect-human --output cut.mp4 --gap-tolerance 2.0
-```
-
-#### Export to Premiere Pro / DaVinci Resolve
-
-```bash
-vtrim --input your_video.mp4 --detect-human --export-xml timeline.xml
-```
-
-You can combine this with --output to also generate a preview video:
-
-```bash
-vtrim --input interview.mp4 --detect-human \
-      --output preview.mp4 \
-      --export-xml interview_edit.xml
-```
 
 ### Notes
 
