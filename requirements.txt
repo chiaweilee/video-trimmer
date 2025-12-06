@@ -1,2 +1,3 @@
-opencv-python>=4.8.0
-numpy>=1.21.0
+numpy==2.3.5
+opencv_python==4.12.0.88
+setuptools==58.1.0
