@@ -96,7 +96,8 @@ def export_fcp7_xml(input_video_path, segments, output_xml_path, video_duration,
     # --- Build XML ---
     xmeml = ET.Element("xmeml", version="5")
     seq = ET.SubElement(xmeml, "sequence")
-    ET.SubElement(seq, "name").text = "VTrim Auto-Edit"
+    video_base_name = os.path.splitext(video_name)[0]
+    ET.SubElement(seq, "name").text = f"{video_base_name} (VTrim)"
     ET.SubElement(seq, "duration").text = str(sequence_duration)
 
     rate = ET.SubElement(seq, "rate")

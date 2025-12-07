@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="vtrim",
-    version="0.1.2",
+    version="0.1.4",
     author="Chiawei Lee",
     author_email="ljw@live.jp",
     description="Trim detects people in videos and trims segments—without re-encoding—preserving quality and speed.",
@@ -10,6 +10,9 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/ai-libx/vtrim",
     packages=find_packages(),
+    package_data={
+        "vtrim": ["*.pt", "*.onnx"],
+    },
     install_requires=[],
     entry_points={
         "console_scripts": [
