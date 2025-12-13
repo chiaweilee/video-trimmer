@@ -71,9 +71,9 @@ Segments are in **seconds**, ready for automation (e.g., with Python, Node.js, o
 | `--detect-human`   | No\*     | Enable human detection. If omitted, the tool returns an empty segment list and does nothing. (Required if you want analysis or trimming) |
 | `--output`         | No       | Path to save the trimmed video (e.g., `trimmed.mp4`). If not provided, only JSON results are printed to stdout.                          |
 | `--export-xml`     | No       | Path to save the FCP7 XML.                                                                                                               |
-| `--conf-threshold` | No       | Confidence threshold for person detection (0.0–1.0). Lower = more sensitive. Default: `0.5`.                                             |
-| `--padding`        | No       | Seconds of padding added before/after each detected segment. Default: `0.5`.                                                             |
-| `--gap-tolerance`  | No       | Maximum gap (in seconds) between detections to merge into one segment. Default: `1.0`.                                                   |
+| `--conf-threshold` | No       | Confidence threshold for person detection (0.0–1.0). Lower = more sensitive. Default: `0.25`.                                             |
+| `--padding`        | No       | Seconds of padding added before/after each detected segment. Default: `1`.                                                             |
+| `--gap-tolerance`  | No       | Maximum gap (in seconds) between detections to merge into one segment. Default: `4`.                                                   |
 
 > 📌 **Important**: `--detect-human` must be specified to perform any analysis. Without it, the output will always be `{"segments": []}`.
 
