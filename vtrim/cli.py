@@ -114,14 +114,14 @@ Note: Human detection is always enabled. The tool uses YOLOv8 to find
         sys.stderr.write(f"[Info] Detected {len(segments)} segment(s)\n")
         sys.stderr.flush()
 
-        if args.export_xml:
-            export_fcp7_xml(
-                input_video_path=args.input,
-                segments=segments,
-                output_xml_path=args.export_xml,
-                video_duration=video_duration,
-                fps=fps
-            )
+    if args.export_xml:
+        export_fcp7_xml(
+            input_video_path=args.input,
+            segments=segments,
+            output_xml_path=args.export_xml,
+            video_duration=video_duration,
+            fps=fps
+        )
 
     # Always output JSON to stdout (for compatibility)
     print(json.dumps({"segments": segments}, indent=None))
