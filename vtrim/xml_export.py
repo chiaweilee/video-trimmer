@@ -3,6 +3,48 @@ import subprocess
 import json
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
+from .config import Config
+
+def get_video_info(video_path):
+    """Get video duration, fps, width, height via ffprobe."""
+    try:
+        result = subprocess.run([
+            'ffprobe', '-v', 'quiet', '-show_entries', 
+            'format=duration', 'stream=width,height,r_frame_rate',
+            '-of', 'json', video_path
+        ], capture_output=True, text=True, check=True)
+        
+        data = json.loads(result.stdout)
+        duration = float(data['format']['duration'])
+        
+        stream = data.get('streams', [{}])[0]
+        width = int(stream.get('width', 1920))
+        height = int(stream.get('height', 1080))
+        
+        # Parse frame rate (may be fractional, e.g., "30000/1001")
+        fps_str = stream.get('r_frame_rate', '24/1')
+        if '/' in fps_str:
+            num, den = map(int, fps_str.split('/'))
+            fps = num / den if den != 0 else 24.0
+        else:
+            fps = float(fps_str)
+        
+        return {
+            'duration': duration,
+            'fps': fps,
+            'width': width,
+            'height': height,
+            'total_frames': int(round(duration * fps))
+        }
+    except Exception:
+        # Fallback values
+        return {
+            'duration': 60.0,
+            'fps': Config.DEFAULT_FPS,
+            'width': Config.DEFAULT_WIDTH,
+            'height': Config.DEFAULT_HEIGHT,
+            'total_frames': int(round(60.0 * Config.DEFAULT_FPS))
+        }
 
 def get_video_total_frames(video_path, fps):
     """Get total frame count via ffprobe; fallback to duration * fps if failed."""
@@ -66,7 +108,15 @@ def export_fcp7_xml(input_video_path, segments, output_xml_path, video_duration,
     video_name = os.path.basename(input_video_path)
     file_id = f"{video_name} file"
 
-    media_total_frames = get_video_total_frames(input_video_path, fps)
+    # Get actual video information
+    video_info = get_video_info(input_video_path)
+    media_total_frames = video_info['total_frames']
+    video_width = video_info['width']
+    video_height = video_info['height']
+    
+    # Use detected fps if not provided or invalid
+    if fps is None or fps <= 0:
+        fps = video_info['fps']
 
     # Build full timeline with 'valid'/'invalid' types
     full_segments = build_full_timeline_segments(segments, video_duration)
@@ -169,8 +219,8 @@ def export_fcp7_xml(input_video_path, segments, output_xml_path, video_duration,
             vid_info = ET.SubElement(media_info, "video")
             ET.SubElement(vid_info, "duration").text = str(media_total_frames)
             sc = ET.SubElement(vid_info, "samplecharacteristics")
-            ET.SubElement(sc, "width").text = "1920"
-            ET.SubElement(sc, "height").text = "1080"
+            ET.SubElement(sc, "width").text = str(video_width)
+            ET.SubElement(sc, "height").text = str(video_height)
 
             aud_info = ET.SubElement(media_info, "audio")
             ET.SubElement(aud_info, "channelcount").text = "2"
@@ -184,8 +234,8 @@ def export_fcp7_xml(input_video_path, segments, output_xml_path, video_duration,
     # Video format info
     fmt = ET.SubElement(video, "format")
     sc_fmt = ET.SubElement(fmt, "samplecharacteristics")
-    ET.SubElement(sc_fmt, "width").text = "1920"
-    ET.SubElement(sc_fmt, "height").text = "1080"
+    ET.SubElement(sc_fmt, "width").text = str(video_width)
+    ET.SubElement(sc_fmt, "height").text = str(video_height)
     ET.SubElement(sc_fmt, "pixelaspectratio").text = "square"
     fmt_rate = ET.SubElement(sc_fmt, "rate")
     ET.SubElement(fmt_rate, "timebase").text = str(int(round(fps)))

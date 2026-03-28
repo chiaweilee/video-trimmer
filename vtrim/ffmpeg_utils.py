@@ -2,6 +2,7 @@ import subprocess
 import tempfile
 import os
 import bisect
+import sys
 
 def get_keyframe_timestamps(video_path):
     """
@@ -42,8 +43,6 @@ def cut_video_with_ffmpeg(input_path, segments, output_path):
     Uses stream copy (-c copy) for speed and quality.
     """
     if not segments:
-        # If no segments, create empty output or skip?
-        # Here we create a 0-byte file? Better: warn and exit?
         raise ValueError("No human segments detected. Nothing to output.")
 
     # Check if ffmpeg is available
@@ -52,7 +51,15 @@ def cut_video_with_ffmpeg(input_path, segments, output_path):
     except (subprocess.CalledProcessError, FileNotFoundError):
         raise RuntimeError("FFmpeg is not installed or not found in PATH. Please install FFmpeg.")
     
+    # Validate input file exists
+    if not os.path.exists(input_path):
+        raise FileNotFoundError(f"Input video file not found: {input_path}")
+    
     keyframes = get_keyframe_timestamps(input_path)
+    
+    if not keyframes:
+        # Fallback strategy if no keyframes detected
+        sys.stderr.write("[Warning] No keyframes detected. Using fallback cutting strategy.\n")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         segment_files = []
@@ -97,6 +104,11 @@ def cut_video_with_ffmpeg(input_path, segments, output_path):
 
         if not segment_files:
             raise RuntimeError("All segments resulted in empty files. Cannot produce output.")
+        
+        # Verify all segment files were created successfully
+        valid_segment_files = [f for f in segment_files if os.path.exists(f) and os.path.getsize(f) > 0]
+        if len(valid_segment_files) < len(segment_files):
+            sys.stderr.write(f"[Warning] {len(segment_files) - len(valid_segment_files)} segment(s) were empty or missing.\n")
 
         # Create concat list
         concat_file = os.path.join(tmpdir, "concat.txt")

@@ -3,6 +3,17 @@ import sys
 import os
 import json
 from .model import load_yolo_model
+from .config import Config
+
+# Global cache for model instance (singleton pattern)
+_model_cache = None
+
+def get_model():
+    """Get or load the YOLO model (singleton pattern to avoid reloading)."""
+    global _model_cache
+    if _model_cache is None:
+        _model_cache = load_yolo_model()
+    return _model_cache
 
 def detect_human(video_path, conf_threshold=0.5):
     """
@@ -16,7 +27,7 @@ def detect_human(video_path, conf_threshold=0.5):
     Returns:
         List[dict]: List of segments with "start" and "end" time (in seconds)
     """
-    model = load_yolo_model()
+    model = get_model()
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         raise IOError(f"Failed to open video file: {video_path}")
@@ -30,12 +41,16 @@ def detect_human(video_path, conf_threshold=0.5):
         total_frames = None
 
     # Sample at 2 FPS
-    frame_interval = max(1, int(round(fps / 2)))
+    frame_interval = max(1, int(round(fps / Config.SAMPLE_FPS)))
     segments = []
     frame_idx = 0
     last_reported_percent = -1
 
     use_json_progress = os.getenv("ANALYZER_PROGRESS_JSON", "0") == "1"
+    
+    # Batch frames for more efficient inference
+    batch_frames = []
+    batch_size = Config.BATCH_SIZE
 
     while True:
         ret, frame = cap.read()
@@ -43,16 +58,21 @@ def detect_human(video_path, conf_threshold=0.5):
             break
 
         if frame_idx % frame_interval == 0:
-            # ✅ Use Ultralytics YOLO for inference
-            # Set verbose=False to suppress per-frame logs
-            results = model(frame, conf=conf_threshold, classes=[0], verbose=False)
+            batch_frames.append(frame)
             
-            # Check if any person (class 0) is detected
-            if len(results[0].boxes) > 0:
-                t = frame_idx / fps
-                segments.append({"start": t, "end": t})
+            # Perform inference when batch is full or at end of video
+            if len(batch_frames) >= batch_size:
+                results = model(batch_frames, conf=conf_threshold, classes=[0], verbose=False)
+                
+                for result, batch_offset in zip(results, range(len(batch_frames))):
+                    if len(result.boxes) > 0:
+                        current_frame_idx = frame_idx - (len(batch_frames) - batch_offset)
+                        t = current_frame_idx / fps
+                        segments.append({"start": t, "end": t})
+                
+                batch_frames = []
 
-        # Progress reporting (unchanged)
+        # Progress reporting
         if total_frames is not None and total_frames > 0:
             current_percent = min(100, int(round((frame_idx / total_frames) * 100)))
             if current_percent > last_reported_percent:
@@ -81,6 +101,15 @@ def detect_human(video_path, conf_threshold=0.5):
                 sys.stderr.flush()
 
         frame_idx += 1
+
+    # Process remaining frames in the last batch
+    if batch_frames and model is not None:
+        results = model(batch_frames, conf=conf_threshold, classes=[0], verbose=False)
+        for result, batch_offset in zip(results, range(len(batch_frames))):
+            if len(result.boxes) > 0:
+                current_frame_idx = frame_idx - (len(batch_frames) - batch_offset)
+                t = current_frame_idx / fps
+                segments.append({"start": t, "end": t})
 
     cap.release()
     if not use_json_progress:
