@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="vtrim",
-    version="0.2.0",
+    version="0.2.1",
     author="Chiawei Lee",
     author_email="ljw@live.jp",
     description="Trim detects people in videos and trims segments—without re-encoding—preserving quality and speed.",
