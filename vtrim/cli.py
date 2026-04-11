@@ -5,10 +5,23 @@ import cv2
 import os
 
 from .analyzer import detect_human
+from .vad_analyzer import detect_speech
 from .segment_utils import merge_segments, apply_padding
 from .ffmpeg_utils import cut_video_with_ffmpeg
 from .xml_export import export_fcp7_xml
 from .config import Config
+import vtrim
+
+def print_banner():
+    """Display VTrim banner with version information."""
+    # ANSI color codes
+    BOLD = '\033[1m'
+    GREEN = '\033[92m'
+    RESET = '\033[0m'
+    
+    banner = f"\n{BOLD}VTrim{RESET} - Video Trimmer  {GREEN}v{vtrim.__version__}{RESET}\n{'=' * 50}\n"
+    sys.stderr.write(banner)
+    sys.stderr.flush()
 
 def main():
     parser = argparse.ArgumentParser(
@@ -16,13 +29,16 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  vtrim -i video.mp4                    # Detect humans and output JSON
+  vtrim -i video.mp4                    # Detect humans + speech (default) and output JSON
   vtrim -i video.mp4 -o output.mp4      # Detect and trim video (lossless)
   vtrim -i video.mp4 --export-xml timeline.xml  # Export XML for editing
   vtrim -i video.mp4 -o output.mp4 --export-xml timeline.xml  # Both outputs
+  vtrim -i video.mp4 --no-vad           # Disable VAD, only use human detection
+  vtrim -i video.mp4 --no-vad -o output.mp4  # Trim video with human detection only
 
-Note: Human detection is always enabled. The tool uses YOLOv8 to find
-      segments with people and can create trimmed videos or edit timelines.
+Note: By default, both human detection (YOLOv8) and voice activity detection
+      (Silero VAD) are enabled. Segments containing either people OR speech
+      will be preserved. Use --no-vad to disable speech detection if needed.
 """
     )
     parser.add_argument(
@@ -45,10 +61,21 @@ Note: Human detection is always enabled. The tool uses YOLOv8 to find
         help=argparse.SUPPRESS  # Hide from help message but still accept the argument
     )
     parser.add_argument(
+        "--no-vad",
+        action="store_true",
+        help="Disable Voice Activity Detection (VAD). By default, both human and speech detection are enabled."
+    )
+    parser.add_argument(
         "--conf-threshold",
         type=float,
         default=Config.CONF_THRESHOLD,
         help="Confidence threshold for person detection (range: 0.0–1.0). Lower values increase sensitivity but may raise false positives."
+    )
+    parser.add_argument(
+        "--vad-threshold",
+        type=float,
+        default=Config.VAD_THRESHOLD,
+        help="Confidence threshold for VAD speech detection (range: 0.0–1.0). Only used when --vad is enabled."
     )
     parser.add_argument(
         "--padding",
@@ -75,6 +102,9 @@ Note: Human detection is always enabled. The tool uses YOLOv8 to find
     )
     args = parser.parse_args()
 
+    # Display banner
+    print_banner()
+
     video_path = args.input
     output_path = args.output
     
@@ -90,7 +120,6 @@ Note: Human detection is always enabled. The tool uses YOLOv8 to find
         print(json.dumps({"error": error_msg}), file=sys.stderr)
         sys.exit(1)
     
-    # Always perform human detection (flag removed in v0.2.0)
     conf_threshold = args.conf_threshold
     padding = args.padding
     gap_tolerance = args.gap_tolerance
@@ -106,8 +135,42 @@ Note: Human detection is always enabled. The tool uses YOLOv8 to find
         sys.stderr.write(f"[Info] Duration: {video_duration:.2f}s, FPS: {fps:.2f}\n")
         sys.stderr.flush()
 
-    raw_segments = detect_human(video_path, conf_threshold=conf_threshold)
-    merged = merge_segments(raw_segments, gap_tolerance=gap_tolerance)
+    # Always perform human detection
+    if args.verbose:
+        sys.stderr.write("[Info] Running human detection (YOLOv8)...\n")
+        sys.stderr.flush()
+    
+    human_segments = detect_human(video_path, conf_threshold=conf_threshold)
+    
+    if args.verbose:
+        sys.stderr.write(f"[Info] Detected {len(human_segments)} human segment(s)\n")
+        sys.stderr.flush()
+    
+    # If VAD is enabled, also detect speech segments (VAD is enabled by default)
+    all_segments = human_segments
+    
+    if not args.no_vad:
+        if args.verbose:
+            sys.stderr.write("[Info] Running voice activity detection (VAD)...\n")
+            sys.stderr.flush()
+        
+        speech_segments = detect_speech(
+            video_path,
+            vad_threshold=args.vad_threshold
+        )
+        
+        if args.verbose:
+            sys.stderr.write(f"[Info] Detected {len(speech_segments)} speech segment(s)\n")
+            sys.stderr.flush()
+        
+        # Combine human and speech segments
+        all_segments = human_segments + speech_segments
+        
+        if args.verbose:
+            sys.stderr.write(f"[Info] Combined {len(all_segments)} total segment(s) before merging\n")
+            sys.stderr.flush()
+    
+    merged = merge_segments(all_segments, gap_tolerance=gap_tolerance)
     segments = apply_padding(merged, padding=padding, video_duration=video_duration)
     
     if args.verbose:
@@ -129,7 +192,7 @@ Note: Human detection is always enabled. The tool uses YOLOv8 to find
     # If --output is specified, generate trimmed video
     if output_path:
         if not segments:
-            error_msg = "No human segments detected. Output video will not be created."
+            error_msg = "No segments detected. Output video will not be created."
             print(json.dumps({"error": error_msg}), file=sys.stderr)
             sys.exit(1)
         try:

@@ -1,8 +1,8 @@
 # VTrim
 
-**VTrim** is a lightweight, efficient video analysis and trimming tool. It automatically finds segments containing people and can **output a trimmed video instantly—without re-encoding**, preserving original quality at blazing speed.
+**VTrim** is a lightweight, efficient video analysis and trimming tool. It automatically finds segments containing people or speech and can **output a trimmed video instantly—without re-encoding**, preserving original quality at blazing speed.
 
-• ⚡ Lossless • 🎥 Professional edit-ready XML • 🔍 AI-powered detection
+• ⚡ Lossless • 🎥 Professional edit-ready XML • 🔍 AI-powered detection • 🎤 Voice Activity Detection
 
 ## Features
 
@@ -10,6 +10,7 @@
 - ✂️ **Lossless Trimming**: FFmpeg stream copy (-c copy) - no quality degradation
 - 🎬 **Professional XML**: Export FCP7 XML for DaVinci Resolve/Premiere Pro
 - 🤖 **AI Detection**: YOLOv8 human detection with configurable sensitivity
+- 🎤 **Voice Activity Detection**: Silero VAD for detecting speech segments
 - ⚙️ **Flexible Configuration**: Centralized config for easy customization
 - 📊 **JSON Output**: Machine-readable results for automation
 
@@ -37,6 +38,23 @@ Output:
 {"segments": [{"start": 2.3, "end": 5.8}, {"start": 10.1, "end": 14.7}]}
 ```
 
+#### Detect Speech Segments (VAD Enabled by Default)
+```bash
+vtrim --input video.mp4
+# or use the short form:
+vtrim -i video.mp4
+```
+
+**By default**, VTrim runs both human detection (YOLOv8) and voice activity detection (Silero VAD). This ensures comprehensive coverage:
+- Segments where people are visible on camera
+- Segments where someone is speaking, even if not visible
+- Perfect for lectures, meetings, interviews, and podcasts
+
+To disable VAD and use only human detection:
+```bash
+vtrim -i video.mp4 --no-vad
+```
+
 #### Trim Video Directly
 
 ```bash
@@ -47,6 +65,23 @@ vtrim -i your_video.mp4 -o output.mp4
 
 - Uses FFmpeg stream copy (-c copy) → no re-encoding, no quality loss.
 - Automatically merges nearby detections and adds padding for smooth transitions.
+
+#### Trim Video with Comprehensive Detection (Default)
+
+```bash
+vtrim --input lecture.mp4 --output complete_trim.mp4
+```
+
+By default, this keeps segments where either:
+- A person is visible on camera (human detection), OR
+- Someone is speaking (VAD detection)
+
+Ideal for lectures, meetings, or any content where important audio might occur without visual presence.
+
+To use only human detection (disable VAD):
+```bash
+vtrim --input video.mp4 --no-vad --output human_only.mp4
+```
 
 ### Export Edit Timeline to DaVinci Resolve / Premiere Pro
 
@@ -62,7 +97,7 @@ vtrim -i your_video.mp4 --export-xml timeline.xml
 
 ### Advanced Examples
 
-#### High Sensitivity Detection
+#### High Sensitivity Human Detection
 ```bash
 vtrim --input video.mp4 \
       --conf-threshold 0.15 \
@@ -89,6 +124,32 @@ vtrim --input video.mp4 \
 ```
 
 Large gap tolerance merges nearby segments into continuous blocks
+
+#### Sensitive Speech Detection
+```bash
+vtrim --input podcast.mp4 \
+      --vad-threshold 0.3 \
+      --output complete_podcast.mp4
+```
+
+Lower VAD threshold captures quieter speech, combined with human detection for comprehensive coverage.
+
+#### Strict Speech Detection
+```bash
+vtrim --input interview.mp4 \
+      --vad-threshold 0.7 \
+      --padding 0.5 \
+      --output focused_interview.mp4
+```
+
+Higher VAD threshold ensures only clear speech is added to human-detected segments.
+
+#### Disable VAD (Human Detection Only)
+```bash
+vtrim --input video.mp4 --no-vad --output human_only.mp4
+```
+
+Use this when you only want to detect visual presence of people, without audio detection.
 
 ### Combined Workflow
 
@@ -123,6 +184,7 @@ Output:
 
 ```python
 from vtrim.analyzer import detect_human
+from vtrim.vad_analyzer import detect_speech
 from vtrim.segment_utils import merge_segments, apply_padding
 from vtrim.ffmpeg_utils import cut_video_with_ffmpeg
 from vtrim.xml_export import export_fcp7_xml
@@ -130,6 +192,12 @@ from vtrim import Config
 
 # Detect humans
 raw_segments = detect_human("video.mp4", conf_threshold=0.25)
+
+# OR detect speech using VAD (can be combined with human detection)
+speech_segments = detect_speech("video.mp4", vad_threshold=0.5)
+
+# Combine both detection results
+all_segments = raw_segments + speech_segments
 
 # Process segments
 merged = merge_segments(raw_segments, gap_tolerance=4.0)
@@ -143,6 +211,7 @@ export_fcp7_xml("video.mp4", padded, "timeline.xml", video_duration=120.5)
 
 # Access configuration
 print(f"Default threshold: {Config.CONF_THRESHOLD}")
+print(f"Default VAD threshold: {Config.VAD_THRESHOLD}")
 print(f"Default padding: {Config.PADDING}")
 ```
 
@@ -155,12 +224,14 @@ print(f"Default padding: {Config.PADDING}")
 | `--input`, `-i` | Required | - | Path to input video file |
 | `--output`, `-o` | Optional | - | Path to save trimmed video |
 | `--export-xml` | String | - | Path to export FCP7 XML |
-| `--conf-threshold` | Float | 0.25 | Detection confidence (0.0-1.0) |
+| `--no-vad` | Flag | Off | Disable Voice Activity Detection (VAD is enabled by default) |
+| `--conf-threshold` | Float | 0.25 | Detection confidence (0.0-1.0), for human detection |
+| `--vad-threshold` | Float | 0.5 | Speech detection confidence (0.0-1.0) |
 | `--padding` | Float | 1.0 | Seconds added before/after segments |
 | `--gap-tolerance` | Float | 4.0 | Max gap to merge segments |
 | `--verbose` | Flag | Off | Show detailed progress |
 
-> 📌 **Note**: Human detection is always enabled. Just provide the input video and VTrim will automatically detect human presence.
+> 📌 **Note**: By default, VTrim runs both human detection (YOLOv8) and voice activity detection (Silero VAD). Use `--no-vad` to disable speech detection if you only want visual presence.
 
 ---
 
@@ -284,6 +355,10 @@ sudo apt-get install ffmpeg
 - Dependencies:
   - opencv-python
   - ultralytics
+  - silero-vad
+  - torch
+  - torchaudio
+  - onnxruntime
   - setuptools
 
 ---
@@ -307,6 +382,7 @@ ANALYZER_PROGRESS_JSON=1 vtrim --input video.mp4
 vtrim/
 ├── __init__.py          # Package initialization, exports Config
 ├── analyzer.py          # Human detection logic
+├── vad_analyzer.py      # Voice Activity Detection logic
 ├── cli.py              # Command-line interface
 ├── config.py           # Configuration settings
 ├── ffmpeg_utils.py     # FFmpeg video processing
@@ -321,6 +397,8 @@ vtrim/
 ## Notes
 
 - The underlying model is **YOLOv8n** (PyTorch format), optimized for CPU inference.
+- **By default**, VTrim uses both **YOLOv8** (human detection) and **Silero VAD** (speech detection) for comprehensive coverage.
+- Use `--no-vad` to disable speech detection if you only need visual presence detection.
 - Video trimming uses **FFmpeg stream copy** (`-c copy`), so it's fast and lossless—no quality degradation.
 - Progress updates are printed to `stderr` during analysis (every 5% for known-length videos).
 - For automation, set the environment variable `ANALYZER_PROGRESS_JSON=1` to receive machine-readable progress messages on `stderr`.
@@ -346,6 +424,6 @@ For more detailed usage examples and advanced configurations, see the inline doc
 
 ## Version
 
-Current version: **0.2.0**
+Current version: **0.3.0**
 
 See [CHANGELOG.md](CHANGELOG.md) for the latest updates and migration notes.
